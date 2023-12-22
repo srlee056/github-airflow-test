@@ -10,7 +10,7 @@ import logging
 
 
 def get_Redshift_connection(autocommit=True):
-    hook = PostgresHook(postgres_conn_id='redshift_dev_db')
+    hook = PostgresHook(postgres_conn_id="redshift_dev_db")
     conn = hook.get_conn()
     conn.autocommit = autocommit
     return conn.cursor()
@@ -23,8 +23,10 @@ def get_historical_prices(symbol):
     records = []
 
     for index, row in data.iterrows():
-        date = index.strftime('%Y-%m-%d %H:%M:%S')
-        records.append([date, row["Open"], row["High"], row["Low"], row["Close"], row["Volume"]])
+        date = index.strftime("%Y-%m-%d %H:%M:%S")
+        records.append(
+            [date, row["Open"], row["High"], row["Low"], row["Close"], row["Volume"]]
+        )
 
     return records
 
@@ -32,7 +34,8 @@ def get_historical_prices(symbol):
 def _create_table(cur, schema, table, drop_first):
     if drop_first:
         cur.execute(f"DROP TABLE IF EXISTS {schema}.{table};")
-    cur.execute(f"""
+    cur.execute(
+        f"""
 CREATE TABLE IF NOT EXISTS {schema}.{table} (
     date date,
     "open" float,
@@ -40,7 +43,8 @@ CREATE TABLE IF NOT EXISTS {schema}.{table} (
     low float,
     close float,
     volume bigint
-);""")
+);"""
+    )
 
 
 @task
@@ -62,21 +66,20 @@ def load(schema, table, records):
         _create_table(cur, schema, table, True)
         # 임시 테이블 내용을 원본 테이블로 복사
         cur.execute(f"INSERT INTO {schema}.{table} SELECT DISTINCT * FROM t;")
-        cur.execute("COMMIT;")   # cur.execute("END;")
+        cur.execute("COMMIT;")  # cur.execute("END;")
     except Exception as error:
         print(error)
-        cur.execute("ROLLBACK;") 
+        cur.execute("ROLLBACK;")
         raise
     logging.info("load done")
 
 
 with DAG(
-    dag_id = 'UpdateSymbol_v2',
-    start_date = datetime(2023,5,30),
+    dag_id="UpdateSymbol_v2",
+    start_date=datetime(2023, 5, 30),
     catchup=False,
-    tags=['API'],
-    schedule = '0 10 * * *'
+    tags=["API"],
+    schedule="0 10 * * *",
 ) as dag:
-
     results = get_historical_prices("AAPL")
-    load("keeyong", "stock_info_v2", results)
+    load("imsolem1226", "stock_info_v2", results)
